@@ -1,0 +1,16 @@
+{
+  "name": "w1l2",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc --watch"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "tslib": "^1.10.0",
+    "typescript": "^3.7.4"
+  }
+}
