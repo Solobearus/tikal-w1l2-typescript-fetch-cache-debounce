@@ -9,7 +9,7 @@ setTimeout(() => {
         .then(e => {
         console.log(e);
     });
-}, 500);
+}, 800);
 setTimeout(() => {
     api.fetchData('walking')
         .then(console.log);

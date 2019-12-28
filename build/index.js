@@ -8,7 +8,9 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 export class ShowsAPI {
-    constructor(url) {
+    constructor(url, debounceTime = 600) {
+        this.url = url;
+        this.debounceTime = debounceTime;
         this.cache = {};
         this.debounceFlag = false;
         this.url = url;
@@ -18,32 +20,55 @@ export class ShowsAPI {
             if (this.debounceFlag) {
                 return null;
             }
-            this.debounceFlag = true;
-            setTimeout(() => {
-                this.debounceFlag = false;
-            }, 600);
-            if (this.cache[query]) {
-                console.log('got from ram');
-                return this.cache[query];
-            }
-            if (localStorage.getItem(query)) {
-                console.log('got from localstorage');
-                this.cache[query] = JSON.parse(localStorage.getItem(query));
-                return this.cache[query];
-            }
-            const result = yield fetch(this.url + "/" + query);
-            const resultParsed = yield result.json();
-            const transformed = resultParsed.map(item => {
-                return {
+            this.startDebounce();
+            this.cache[query] = this.getRamCache(query)
+                || this.getLocalStorageCache(query)
+                || (yield this.getData(query));
+            localStorage.setItem(query, JSON.stringify(this.cache[query]));
+            return this.cache[query];
+        });
+    }
+    getData(query) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                const result = yield fetch(this.url + "/" + query);
+                const resultParsed = yield result.json();
+                return resultParsed.map(item => ({
                     id: item.show.id,
                     title: item.show.name,
                     description: item.show.summary,
                     score: item.score
-                };
-            });
-            this.cache[query] = transformed;
-            localStorage.setItem(query, JSON.stringify(transformed));
-            return transformed;
+                }));
+            }
+            catch (e) {
+                return null;
+            }
         });
+    }
+    getLocalStorageCache(query) {
+        if (!localStorage.getItem(query)) {
+            return null;
+        }
+        try {
+            this.cache[query] = JSON.parse(localStorage.getItem(query));
+            console.log('got from localstorage');
+            return this.cache[query];
+        }
+        catch (e) {
+            return null;
+        }
+    }
+    getRamCache(query) {
+        if (this.cache[query]) {
+            console.log('got from ram');
+            return this.cache[query];
+        }
+        return null;
+    }
+    startDebounce() {
+        this.debounceFlag = true;
+        setTimeout(() => {
+            this.debounceFlag = false;
+        }, this.debounceTime);
     }
 }

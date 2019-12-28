@@ -1,3 +1,4 @@
+// interface ICache {
 interface ICache {
     id: number,
     title: string,
@@ -18,57 +19,72 @@ interface IResponse {
     score: number
 }
 
-
 export class ShowsAPI {
-
-    private url: string;
     private cache: ICacheData = {};
     private debounceFlag: boolean = false;
 
-    constructor(url: string) {
+    constructor(private readonly url: string, private debounceTime = 600) {
         this.url = url;
     }
 
     async fetchData(query: string): Promise<ICache[] | null> {
-
         if (this.debounceFlag) {
-            return null
+            return null;
         }
 
-        this.debounceFlag = true;
+        this.startDebounce()
 
-        setTimeout(() => {
-            this.debounceFlag = false;
-        }, 600);
+        this.cache[query] = this.getRamCache(query)
+            || this.getLocalStorageCache(query)
+            || await this.getData(query);
 
-        if (this.cache[query]) {
-            console.log('got from ram');
-            return this.cache[query]
-        }
+        localStorage.setItem(query, JSON.stringify(this.cache[query]));
+        return this.cache[query]
+    }
 
-        if (localStorage.getItem(query)) {
-            console.log('got from localstorage');
-            this.cache[query] = JSON.parse(localStorage.getItem(query));
-            return this.cache[query];
-        }
+    private async getData(query: string): Promise<ICache[]> {
+        try {
+            const result = await fetch(this.url + "/" + query);
+            const resultParsed: IResponse[] = await result.json();
 
-        const result = await fetch(this.url + "/" + query);
-        const resultParsed: IResponse[] = await result.json();
-
-        const transformed = resultParsed.map(item => {
-            return {
+            return resultParsed.map(item => ({
                 id: item.show.id,
                 title: item.show.name,
                 description: item.show.summary,
                 score: item.score
-            }
-        })
-
-        this.cache[query] = transformed;
-
-        localStorage.setItem(query, JSON.stringify(transformed));
-        return transformed;
+            }))
+        } catch (e) {
+            return null
+        }
     }
 
-}
+    private getLocalStorageCache(query: string): ICache[] {
+        if(!localStorage.getItem(query)){
+            return null
+        }
+        try {
+            this.cache[query] = JSON.parse(localStorage.getItem(query));
+            console.log('got from localstorage');
+            return this.cache[query];
+        } catch (e) {
+            return null
+        }
+    }
 
+    private getRamCache(query: string): ICache[] {
+        if (this.cache[query]) {
+            console.log('got from ram');
+            return this.cache[query]
+        }
+        return null
+    }
+
+
+    private startDebounce() {
+        this.debounceFlag = true;
+
+        setTimeout(() => {
+            this.debounceFlag = false;
+        }, this.debounceTime);
+    }
+}
